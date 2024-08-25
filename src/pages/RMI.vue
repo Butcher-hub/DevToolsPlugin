@@ -32,16 +32,43 @@
               </n-space>
             </td>
           </tr>
+          <tr>
+            <td colspan="2">
+              <n-space>
+                <n-button strong secondary circle type="primary" @click="addParam(model.params.length)">
+                  <template #icon>
+                    <n-icon>
+                      <AddCircleOutline />
+                    </n-icon>
+                  </template>
+                </n-button>
+                <n-button strong secondary circle type="info" @click="saveQuickOperation()">
+                  <template #icon>
+                    <n-icon>
+                      <SaveOutline />
+                    </n-icon>
+                  </template>
+                </n-button>
+                <n-collapse style="margin-top: 6px;" arrow-placement="right">
+                  <n-collapse-item title="快捷方式">
+                    <n-space align="center">
+                      <n-tag type="success" closable @close="onRemoveQuickOperation(operation)" v-for="operation in quickOperations"
+                        @click="selectQuickOperation(operation)">
+                        {{ operation.name }}
+                      </n-tag>
+                    </n-space>
+                  </n-collapse-item>
+                </n-collapse>
+              </n-space>
+            </td>
+          </tr>
         </tbody>
       </n-table>
     </n-form-item>
-    <n-space justify="end" align="center" style="margin-bottom: 8px;">
-      <n-tag type="success" v-for="operation in quickOperations" @click="selectQuickOperation(operation)">
-        {{ operation.name }}
-      </n-tag>
-      <n-button type="primary" @click="submit">提交</n-button>
+    <n-space justify="end" align="center" style="margin-bottom: 24px;">
+      <n-button type="primary" @click="onSubmit">提交</n-button>
     </n-space>
-    <n-card title="结果" size="small" :segmented="{
+    <n-card v-if="model.result" title="结果" size="small" :segmented="{
       content: true
     }">
       <n-code :code="model.result" language="json" :show-line-numbers="true" />
@@ -49,10 +76,11 @@
   </n-form>
 </template>
 <script lang="ts" setup>
-import { reactive } from 'vue'
-import { AddCircleOutline, TrashBinOutline } from '@vicons/ionicons5'
-import type { FormRules } from 'naive-ui'
+import { ref, onMounted, watch } from 'vue'
+import { AddCircleOutline, TrashBinOutline, SaveOutline } from '@vicons/ionicons5'
+import type { FormInst, FormRules } from 'naive-ui'
 
+import useStorage from '@/hooks/useStorage'
 
 interface ModelType {
   className?: string
@@ -65,40 +93,46 @@ interface QuickOperation extends ModelType {
   name: string
 }
 
-const model = reactive<ModelType>({
-  params: ['']
+const formRef = ref<FormInst | null>(null)
+
+const model = ref<ModelType>({
+  params: []
 })
 
-const rules: FormRules[] = []
-
-const quickOperations: QuickOperation[] = [
-  {
-    name: '获取资源树节点',
-    className: 'CatalogService',
-    methodName: 'getCatalogElementById',
-    params: []
+const rules: FormRules = {
+  className: {
+    required: true,
+    message: '请输入ClassName'
   },
-  {
-    name: '删除资源树节点',
-    className: 'CatalogService',
-    methodName: 'getCatalogElementById',
-    params: []
+  methodName: {
+    required: true,
+    message: '请输入methodName'
   }
-]
+}
+
+watch(model, (value) => {
+  useStorage('rmi-value', JSON.parse(JSON.stringify(value)))
+}, { deep: true})
+
+const quickOperations = ref<QuickOperation[]>([])
 
 const addParam = (index: number) => {
-  model.params.splice(index, 0, '')
+  model.value.params.splice(index, 0, '')
 }
 
 const removeParam = (index: number) => {
-  if (model.params.length == 1) {
-    model.params[0] = ''
-  } else {
-    model.params.splice(index, 1)
-  }
+  model.value.params.splice(index, 1)
 }
 
-const submit = async () => {
+const onSubmit = () => {
+  formRef.value?.validate((errors) => {
+    if (!errors) {
+      doSubmit()
+    }
+  })
+}
+
+const doSubmit = async () => {
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   // 向目标页面里注入js方法
   let result = await chrome.scripting.executeScript({
@@ -114,19 +148,42 @@ const submit = async () => {
   if (result && result[0] && result[0].result) {
     let ret = result[0].result
     if (typeof ret === 'object') {
-      model.result = JSON.stringify(ret, null, 2)
+      model.value.result = JSON.stringify(ret, null, 2)
     } else {
       try {
-        model.result = JSON.stringify(JSON.parse(result[0].result), null, 2)
+        model.value.result = JSON.stringify(JSON.parse(result[0].result), null, 2)
       } catch (e) {
-        model.result = result[0].result
+        model.value.result = result[0].result
       }
     }
   }
 }
 
 const selectQuickOperation = (operation: QuickOperation) => {
-  model.className = operation.className
-  model.methodName = operation.methodName
+  model.value.className = operation.className
+  model.value.methodName = operation.methodName
 }
+
+const saveQuickOperation = async () => {
+  quickOperations.value.push({
+    name: `${model.value.className}.${model.value.methodName}`,
+    className: model.value.className,
+    methodName: model.value.methodName,
+    params: []
+  })
+  await useStorage('rmi-quick-operation', JSON.parse(JSON.stringify(quickOperations.value)))
+}
+
+const onRemoveQuickOperation = async (value: QuickOperation) => {
+  quickOperations.value = quickOperations.value.filter(el => el.name !== value.name)
+  await saveQuickOperation()
+}
+
+onMounted(async () => {
+  quickOperations.value = <QuickOperation []> await useStorage('rmi-quick-operation') || []
+    let storageModel = await useStorage('rmi-value')
+    if (storageModel) {
+      model.value = <ModelType> storageModel
+    }
+})
 </script>
