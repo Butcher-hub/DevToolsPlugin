@@ -11,7 +11,10 @@
         <tbody>
           <tr v-for="i in model.params.length">
             <td>
-              <n-input v-model:value="model.params[i - 1]" :placeholder="`param${i}`" />
+              <n-input v-model:value="model.params[i - 1].value" :placeholder="`param${i}`" />
+            </td>
+            <td>
+              <n-select v-model:value="model.params[i - 1].dataType" :options="dataTypeOptions" />
             </td>
             <td>
               <n-space>
@@ -52,8 +55,8 @@
                 <n-collapse style="margin-top: 6px;" arrow-placement="right">
                   <n-collapse-item title="快捷方式">
                     <n-space align="center">
-                      <n-tag type="success" closable @close="onRemoveQuickOperation(operation)" v-for="operation in quickOperations"
-                        @click="selectQuickOperation(operation)">
+                      <n-tag type="success" closable @close="onRemoveQuickOperation(operation)"
+                        v-for="operation in quickOperations" @click="selectQuickOperation(operation)">
                         {{ operation.name }}
                       </n-tag>
                     </n-space>
@@ -66,7 +69,7 @@
       </n-table>
     </n-form-item>
     <n-space justify="end" align="center" style="margin-bottom: 24px;">
-      <n-button type="primary" @click="onSubmit">提交</n-button>
+      <n-button type="primary" @click="onSubmit" :loading="loading">提交</n-button>
     </n-space>
     <n-card v-if="model.result" title="结果" size="small" :segmented="{
       content: true
@@ -79,19 +82,29 @@
 import { ref, onMounted, watch } from 'vue'
 import { AddCircleOutline, TrashBinOutline, SaveOutline } from '@vicons/ionicons5'
 import type { FormInst, FormRules } from 'naive-ui'
+import { useMessage } from 'naive-ui'
 
 import useStorage from '@/hooks/useStorage'
 
 interface ModelType {
   className?: string
   methodName?: string
-  params: any[],
+  params: Param[],
   result?: string
+}
+
+interface Param {
+  value: string;
+  dataType: 'string' | 'boolean' | 'number' | 'object';
 }
 
 interface QuickOperation extends ModelType {
   name: string
 }
+
+const message = useMessage()
+
+const loading = ref<boolean>(false)
 
 const formRef = ref<FormInst | null>(null)
 
@@ -110,14 +123,28 @@ const rules: FormRules = {
   }
 }
 
+const dataTypeOptions = [{
+  label: '字符串',
+  value: 'string'
+}, {
+  label: '布尔',
+  value: 'boolean'
+}, {
+  label: '数值',
+  value: 'number'
+}, {
+  label: '对象',
+  value: 'object'
+}]
+
 watch(model, (value) => {
   useStorage('rmi-value', JSON.parse(JSON.stringify(value)))
-}, { deep: true})
+}, { deep: true })
 
 const quickOperations = ref<QuickOperation[]>([])
 
 const addParam = (index: number) => {
-  model.value.params.splice(index, 0, '')
+  model.value.params.splice(index, 0, { value: '', dataType: 'string' })
 }
 
 const removeParam = (index: number) => {
@@ -127,12 +154,39 @@ const removeParam = (index: number) => {
 const onSubmit = () => {
   formRef.value?.validate((errors) => {
     if (!errors) {
-      doSubmit()
+      let args = handleModelValue(model.value)
+      doSubmit(args)
     }
   })
 }
 
-const doSubmit = async () => {
+const handleModelValue = (modelValue: ModelType) => {
+  let params = modelValue.params.map(el => {
+    try {
+      switch (el.dataType) {
+        case 'number':
+          return Number(el.value)
+        case 'boolean':
+          return el.value.toLowerCase() === 'true'
+        case 'object':
+          return JSON.parse(el.value)
+        default:
+          return el.value
+      }
+    } catch (error: any) {
+      message.warning(error.message)
+      return el.value
+    }
+  })
+  return [{
+    className: modelValue.className,
+    methodName: modelValue.methodName,
+    params
+  }]
+}
+
+const doSubmit = async (args: any) => {
+  loading.value = true
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   // 向目标页面里注入js方法
   let result = await chrome.scripting.executeScript({
@@ -143,18 +197,15 @@ const doSubmit = async () => {
       let util = window.jsloader.resolve('freequery.common.util')
       return util.remoteInvoke(model.className, model.methodName, model.params)
     },
-    args: [JSON.parse(JSON.stringify(model))]
+    args
   });
+  loading.value = false
   if (result && result[0] && result[0].result) {
     let ret = result[0].result
     if (typeof ret === 'object') {
       model.value.result = JSON.stringify(ret, null, 2)
     } else {
-      try {
-        model.value.result = JSON.stringify(JSON.parse(result[0].result), null, 2)
-      } catch (e) {
-        model.value.result = result[0].result
-      }
+      model.value.result = result[0].result
     }
   }
 }
@@ -180,10 +231,10 @@ const onRemoveQuickOperation = async (value: QuickOperation) => {
 }
 
 onMounted(async () => {
-  quickOperations.value = <QuickOperation []> await useStorage('rmi-quick-operation') || []
-    let storageModel = await useStorage('rmi-value')
-    if (storageModel) {
-      model.value = <ModelType> storageModel
-    }
+  quickOperations.value = <QuickOperation[]>await useStorage('rmi-quick-operation') || []
+  let storageModel = await useStorage('rmi-value')
+  if (storageModel) {
+    model.value = <ModelType>storageModel
+  }
 })
 </script>

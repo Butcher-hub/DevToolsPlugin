@@ -1,16 +1,18 @@
 <template>
   <n-config-provider :hljs="hljs">
-    <n-layout has-sider>
-      <n-layout-sider bordered collapse-mode="width" :collapsed-width="64" :width="240" :collapsed="collapsed"
-        show-trigger @collapse="collapsed = true" @expand="collapsed = false">
-        <n-menu :collapsed="collapsed" :collapsed-width="64" :collapsed-icon-size="22" :options="menuOptions" />
-      </n-layout-sider>
-      <n-layout class="content">
-        <n-scrollbar style="max-height: 100vh">
-          <RouterView />
-        </n-scrollbar>
+    <n-message-provider>
+      <n-layout has-sider>
+        <n-layout-sider bordered collapse-mode="width" :collapsed-width="64" :width="240" :collapsed="collapsed"
+          show-trigger @collapse="collapsed = true" @expand="collapsed = false">
+          <n-menu :collapsed="collapsed" :collapsed-width="64" :collapsed-icon-size="22" :options="menuOptions" />
+        </n-layout-sider>
+        <n-layout class="content">
+          <n-scrollbar style="max-height: 100vh">
+            <RouterView />
+          </n-scrollbar>
+        </n-layout>
       </n-layout>
-    </n-layout>
+    </n-message-provider>
   </n-config-provider>
 </template>
 
