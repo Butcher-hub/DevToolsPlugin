@@ -68,8 +68,9 @@
         </tbody>
       </n-table>
     </n-form-item>
-    <n-space justify="end" align="center" style="margin-bottom: 24px;">
-      <n-button type="primary" @click="onSubmit" :loading="loading">提交</n-button>
+    <n-space justify="center" align="center" style="margin-bottom: 24px;">
+      <n-button type="primary" @click="onSubmit" :loading="loading">提交请求</n-button>
+      <n-button type="warning" @click="onClear">清空结果</n-button>
     </n-space>
     <n-card v-if="model.result" title="结果" size="small" :segmented="{
       content: true
@@ -160,6 +161,10 @@ const onSubmit = () => {
   })
 }
 
+const onClear = () => {
+  model.value.result = ''
+}
+
 const handleModelValue = (modelValue: ModelType) => {
   let params = modelValue.params.map(el => {
     try {
@@ -193,9 +198,13 @@ const doSubmit = async (args: any) => {
     target: { tabId: tab.id || 0 },
     world: 'MAIN',
     func: (model) => {
-      // @ts-ignore
-      let util = window.jsloader.resolve('freequery.common.util')
-      return util.remoteInvoke(model.className, model.methodName, model.params)
+      try {
+        // @ts-ignore
+        let util = window.jsloader.resolve('freequery.common.util')
+        return util.remoteInvoke(model.className, model.methodName, model.params)
+      } catch (err) {
+        return JSON.parse(JSON.stringify({msg: '没有找到上下文，请在smartbi页面使用！'}))
+      }
     },
     args
   });
