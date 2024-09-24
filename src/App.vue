@@ -31,10 +31,21 @@ import { routes } from '@/router'
 import hljs from 'highlight.js/lib/core'
 import json from 'highlight.js/lib/languages/json'
 
+import { MODE } from '@/util/emun.ts'
+
+let mode = new URLSearchParams(window.location.search).get('mode')
+
+if (mode === MODE.tab) {
+    document.body.style.width = '100%'
+    document.body.style.height = '100%'
+} else if (!mode){
+  mode = MODE.popup
+}
+
 hljs.registerLanguage('json', json)
 
 const collapsed = ref<boolean>(false)
-const menuOptions: MenuOption[] = routes.filter(el => el.meta).map(el => {
+const menuOptions: MenuOption[] = routes.filter(el => el.meta.mode.includes(mode)).map(el => {
   return {
     label: () =>
       h(
@@ -50,6 +61,7 @@ const menuOptions: MenuOption[] = routes.filter(el => el.meta).map(el => {
     icon: () => h(NIcon, null, { default: () => h(el.meta?.icon || BuildOutline) })
   }
 })
+
 </script>
 <style scoped>
 .content {

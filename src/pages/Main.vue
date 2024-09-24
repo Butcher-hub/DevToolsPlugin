@@ -6,9 +6,18 @@
             </n-icon>
         </template>
     </n-result>
+    <n-flex justify="center">
+        <n-button @click="openInNewTab">新Tab打开</n-button>
+    </n-flex>
 </template>
 <script lang="ts" setup>
 import { BuildOutline } from '@vicons/ionicons5'
+import { MODE } from '@/util/emun.ts'
+const openInNewTab = () => {
+    chrome.tabs.create({
+        url: `/index.html?mode=${MODE.tab}`
+    })
+}
 
 </script>
 <style scoped>

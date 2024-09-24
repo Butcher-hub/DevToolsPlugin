@@ -4,4 +4,6 @@ import './style.css'
 import App from './App.vue'
 import router from '@/router'
 
-createApp(App).use(naive).use(router).mount('#app')
+const app = createApp(App)
+app.use(naive).use(router)
+app.mount('#app')

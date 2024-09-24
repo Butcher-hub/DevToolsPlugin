@@ -3,7 +3,7 @@
     "name": "DevToolsPlugin",
     "version": "1.0",
     "description": "开发工具集插件",
-    "permissions": ["activeTab", "storage", "scripting"],
+    "permissions": ["activeTab", "storage", "scripting", "tabs"],
     "background": {
       "service_worker": "background.js"
     },
