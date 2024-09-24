@@ -1,3 +1,5 @@
+@import 'jsoneditor/dist/jsoneditor.min.css';
+
 body {
   width: 750px;
   height: 550px;

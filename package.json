@@ -11,11 +11,13 @@
   "dependencies": {
     "@vicons/ionicons5": "^0.12.0",
     "highlight.js": "^11.10.0",
+    "jsoneditor": "^10.1.0",
     "vue": "^3.4.37",
     "vue-router": "4"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.270",
+    "@types/jsoneditor": "^9.9.5",
     "@types/node": "^22.5.0",
     "@vitejs/plugin-vue": "^5.1.2",
     "naive-ui": "^2.39.0",
