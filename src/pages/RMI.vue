@@ -11,7 +11,12 @@
         <tbody>
           <tr v-for="i in model.params.length">
             <td>
-              <n-input v-model:value="model.params[i - 1].value" :placeholder="`param${i}`" />
+              <n-input
+                style="min-width: 180px;"
+                :type="isObjectType(model.params[i - 1]) ? 'textarea' : 'text'"
+                :autosize="isObjectType(model.params[i - 1]) ? { minRows: 3 } : false"
+                v-model:value="model.params[i - 1].value"
+                :placeholder="`param${i}`" />
             </td>
             <td>
               <n-select v-model:value="model.params[i - 1].dataType" :options="dataTypeOptions" />
@@ -152,6 +157,10 @@ const removeParam = (index: number) => {
   model.value.params.splice(index, 1)
 }
 
+const isObjectType = (param: Param) => {
+  return param.dataType === 'object'
+}
+
 const onSubmit = () => {
   formRef.value?.validate((errors) => {
     if (!errors) {
@@ -222,14 +231,17 @@ const doSubmit = async (args: any) => {
 const selectQuickOperation = (operation: QuickOperation) => {
   model.value.className = operation.className
   model.value.methodName = operation.methodName
+  model.value.params = operation.params
 }
 
 const saveQuickOperation = async () => {
+  const name = `${model.value.className}.${model.value.methodName}`
+  quickOperations.value = quickOperations.value.filter(el => el.name !== name)
   quickOperations.value.push({
-    name: `${model.value.className}.${model.value.methodName}`,
+    name,
     className: model.value.className,
     methodName: model.value.methodName,
-    params: []
+    params: JSON.parse(JSON.stringify(model.value.params))
   })
   await useStorage('rmi-quick-operation', JSON.parse(JSON.stringify(quickOperations.value)))
 }
